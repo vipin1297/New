@@ -6,8 +6,8 @@ public class Calculator {
       double ans;
    
      
-      System.out.print("Enter two numbers");
+      System.out.println("Enter two numbers");
       ans=num1+num2;
-      System.out.printf(ans);
+      System.out.println(ans);
    }
 }
