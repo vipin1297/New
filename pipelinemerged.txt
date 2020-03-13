@@ -1,0 +1,66 @@
+pipeline {
+    agent any
+        stages{
+            stage('Git SCM Checkout'){
+                steps{
+                    git 'https://github.com/vipin1297/parking_frontend'
+                }
+            }
+            stage('UI Build') {
+                steps{
+                    sh 'npm install'
+                    sh 'npm run build'
+                    
+                }
+            }
+         stage("QG Check-Backend") {
+            steps {
+                git 'https://github.com/vipin1297/INGFavBank.git'
+                withSonarQubeEnv('sonar') {
+                    sh '/opt/maven/bin/mvn clean verify sonar:sonar'
+                }
+              timeout(time: 5, unit: 'MINUTES') {
+                waitForQualityGate abortPipeline: true
+              }
+            }
+          }
+         stage("UAT Approval") {
+                  steps {
+                      emailext (
+
+  subject: "Waiting for your Approval! Job: '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
+
+  body: """<p>STARTED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+
+              <p>Check console output at &QUOT;<a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>&QUOT;</p>""",to: 'viratmaurya109@gmail.com'
+     )
+        script {
+            def userInput = input(id: 'Proceed1', message: 'Promote build?', parameters: [[$class: 'BooleanParameterDefinition', defaultValue: true, description: '', name: 'Please confirm you agree with this']])
+            echo 'userInput: ' + userInput
+ 
+            if(userInput == true) {
+                // do action
+            } else {
+                // not do action
+                echo "Action was aborted."
+            }
+ 
+        }  
+      }
+ }
+            stage('Uploading artifact to nexus') {
+             steps {
+                     sh"/opt/maven/bin/mvn clean deploy -Dmaven.test.skip=true"
+                }
+            }
+
+       
+        stage('Running Playbook'){
+            steps{
+            sshPublisher(publishers: [sshPublisherDesc(configName: 'Local', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'ansible-playbook new.yml', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+        }
+       
+       
+    }
+}
