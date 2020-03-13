@@ -1,0 +1,1036 @@
+suTransfer files from windows local to linux ec2-instance (jdk zip file to ec2-instance)
+
+option 1 - use winscp to connect and then transfer the jdk zip file.
+
+Option 2 – windows based (both .pem key (private key) and java zip file in the same folder to avoid specifying .pem and jdk zip file paths)
+Target ec2 instance : /home/ec2-user
+
+provide your own .pem file
+provide your own ec2-instance details
+
+sample command
+--------------
+c:\Users\senthil.alagarsamy\Downloads>(sample path)
+
+scp -i cicd1.pem jdk-8u212-linux-x64.tar.gz ec2-user@ec2-13-233-35-82.ap-south-1.compute.amazonaws.com:~
+
+Once the above step is completed you should have your zip file (jdk-8u212-linux-x64.tar.gz) file
+under /home/ec2-user path.
+---------------------------------------------------------------------------------------------------------------------------------
+                                                JDK/Java Installation
+                                               -------------------------
+Refer Link if you want to install open JDK: https://linuxconfig.org/how-to-install-java-on-redhat-8-linux
+
+sudo su -
+
+cp -rf jdk-8u212-linux-x64.tar.gz /opt
+
+cd /opt
+
+tar -xzvf jdk-8u212-linux-x64.tar.gz
+
+cd jdk1.8.0_212/
+
+alternatives --install /usr/bin/java java /opt/jdk1.8.0_212/bin/java 2
+
+alternatives --config java            (choose 1)
+
+alternatives --install /usr/bin/jar jar /opt/jdk1.8.0_212/bin/jar 2
+
+alternatives --install /usr/bin/javac javac /opt/jdk1.8.0_212/bin/javac 2
+
+alternatives --set jar /opt/jdk1.8.0_212/bin/jar
+
+alternatives --set javac /opt/jdk1.8.0_212/bin/javac
+
+Setting PATH variable in /etc/environment: (https://www.tecmint.com/set-unset-environment-variables-in-linux/)
+------------------------------------------
+Set Java environment:
+-----------------------
+sudo vi /etc/environment
+
+Add below env variables :
+-----------------------
+
+export JAVA_HOME=/opt/jdk1.8.0_212
+export JRE_HOME=/opt/jdk1.8.0_212/jre
+export PATH=$PATH:/opt/jdk1.8.0_212/bin:/opt/jdk1.8.0_212/jre/bin
+
+verify java installation (1.8.0_212)
+---------------------------------------
+
+java -version
+
+-------------------------------------------------------------------------------------------------------------------------------
+                                                 MAVEN Installation
+                                                --------------------
+sudo su -
+
+cd /opt                                 
+
+yum install wget
+
+sudo wget http://apachemirror.wuchna.com/maven/maven-3/3.6.3/binaries/apache-maven-3.6.3-bin.tar.gz
+
+[Note: For maven latest download, always go to the maven official site https://maven.apache.org/download.cgi and check out the latest version, copy the link from there and add for download in the above command]
+
+tar -xzvf apache-maven-3.6.3-bin.tar.gz
+
+cp -r apache-maven-3.6.3 maven
+
+cd maven
+
+Now set the environments variables:
+----------------------------------
+vi /etc/profile
+
+Go to the last line and set maven path, enter below lines and save it:
+----------------------------------
+export M2_HOME=/opt/maven
+export PATH=${M2_HOME}/bin:${PATH}
+
+Now load the environment variables in current shell using following command.
+----------------------------------------------------
+source /etc/profile
+
+mvn - -version
+--------------------------------------------------------------------------------------------------
+	
+use the below command to set up path (in case you get command not found error)
+--------------------------------------------------------------------------------
+PATH=$PATH:/usr/bin export PATH
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------
+Creating Swap memory:
+
+To use the temporary RAM space
+
+Creating a swap file size of 4GBusing dd command as shown below:
+dd if=/dev/zero of=/mnt/swapfile bs=1024 count=4097152
+
+ 
+
+Set permission on the file by using below command, make it readable only by root user
+ chmod 600 /mnt/swapfile
+
+ 
+
+Using mkswap command and set up file for swap space:
+ mkswap /mnt/swapfile
+
+ 
+
+Enable the swap file and add it to the system as a swap file by using below crowds
+ swapon /mnt/swapfile
+
+Add below lines in /etc/fstab:
+
+/swapfile           swap     swap    default  0 0
+
+/mnt/swapfile   swap    swap    defaults 0 0
+
+5 sudo mount -a
+
+ 
+
+6 free -h
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Jenkins Installation
+
+
+sudo wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/redhat-stable/jenkins.repo
+sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io.key
+
+yum install jenkins
+
+Copy the path given on unlock Jenkins screen along with cat command.
+cat /var/lib/jenkins/secrets/initialAdminPassword
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Sonarqube server Installation
+
+ 
+
+Go to /opt folder:
+ 
+
+cd /opt
+
+ 
+
+Install sonarqube by using below commands:
+ 
+
+sudo wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-7.6.zip
+
+Unzip the software:
+sudo unzip sonarqube-7.6.zip
+Provide full permissions to sonarqube.7.6.
+Run as ec2-user (non root)
+sudo su ec2-user
+
+sudo chown -R ec2-user:ec2-user /opt/sonarqube-7.6   [change the owner]
+
+sudo chmod 777 -R sonarqube-7.6          [provide access permission]
+
+cd /opt/sonarqube-7.6/bin/linux-x86-64
+
+run ls command and check sonar.sh should be there
+
+now run sonar using below command:
+
+sh sonar.sh start               or            ./sonar.sh start
+
+check the status using:
+
+sh sonar.sh status
+
+Once sonarqube is running successfully then go to
+
+http://3.134.106.95:9000              [ip is our aws running instance and 9000 is the port]
+
+ 
+
+ 
+
+Reasons sonarqube is not running properly:
+
+when we install from the root user. We should be in the non-root user.
+
+Go to logs and check. Below is the path for log:
+
+cat /opt/sonarqube-7.6/logs/sonar.log | tail -n50
+
+ 
+----------------------------------------------------------------------------------------------------------------------------------------------------
+ 
+
+Sonarqube Scanner installation:
+
+ 
+
+Install sonarqube scanner using below commands:
+ 
+
+sudo wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-3.3.0.1492-linux.zip
+
+ 
+
+sudo unzip sonar-scanner-cli-3.3.0.1492-linux.zip           
+
+ 
+
+cd sonar-scanner-3.3.0.1492-linux
+
+Set the path in /etc/environment folder, add below lines:
+vi /etc/environment
+
+ 
+
+export SONAR_SCANNER=/opt/sonar-scanner-3.3.0.1492-linux
+export PATH=${SONAR_SCANNER}/bin:${PATH}
+
+ 
+
+To configure SonarScanner with Jenkins:
+
+Install “SonarQube Scanner” plugin in Jenkins:
+ 
+
+JenkinsàManage JenkinsàManage Plugins
+
+ 
+----------------------------------------------------------------------------------------------------------------------------------
+ 
+
+Configure sonar scanner:
+ 
+
+Manage JenkinsàGlobal Tool Configuration
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------
+
+                                         Tomcat installation
+
+                                           ----------------------
+
+Refer Link:(https://www.tecmint.com/install-apache-tomcat-in-rhel-8/)
+
+ 
+
+sudo wget http://mirrors.estointernet.in/apache/tomcat/tomcat-9/v9.0.31/bin/apache-tomcat-9.0.31.tar.gz
+
+ 
+
+tar -xvzf apache-tomcat-9.0.31.tar.gz
+
+ 
+
+cd apache-tomcat-9.0.31
+
+ 
+
+cd conf
+
+ 
+
+cp -r server.xml server.xmlbkp
+
+ 
+
+vi server.xml
+
+<Connector port="8888" protocol="HTTP/1.1"
+
+               connectionTimeout="20000"
+
+               redirectPort="8443" />
+
+ 
+
+ 
+
+cp -r tomcat-users.xml tomcat-users.xmlbkp
+
+ 
+
+vi tomcat-users.xml
+
+<user username="admin" password="admin" roles="manager-gui,admin-gui,manager-script"/>
+
+ 
+
+ 
+
+cd ..
+
+ 
+
+cd webapps
+
+ 
+
+cd manager
+
+ 
+
+cd META-INF
+
+ 
+
+vi context.xml
+
+<!--  <Valve className="org.apache.catalina.valves.RemoteAddrValve"
+
+         allow="127\.\d+\.\d+\.\d+|::1|0:0:0:0:0:0:0:1" /> -->
+
+ 
+
+cd ..
+
+ 
+
+cd ..
+
+ 
+
+cd ..
+
+ 
+
+cd bin
+
+ 
+
+sh shutdown.sh
+
+ 
+
+sh startup.sh
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+sonar token - c2a196086858350c1509b0ef2f5123573ec906e4
+
+sudo wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.2.0.1873-linux.zip
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------
+
+Go through the below steps carefully before you start installation.
+
+ 
+
+                                               Mysql Installation:
+
+                                             -----------------------
+
+Refer link for latest version of MySQL : https://www.tecmint.com/install-latest-mysql-on-rhel-centos-and-fedora/
+
+
+rpm -Uvh https://repo.mysql.com/mysql80-community-release-el8-1.noarch.rpm
+yum localinstall mysql80-community-release-el7-1.noarch.rpm
+yum repolist enabled | grep "mysql.*-community.*"
+yum install mysql-community-server
+ 
+
+sudo su -
+
+ 
+
+cd /opt
+
+yum install mysql-server mysql
+
+ 
+
+subscription-manager repos --list-enabled
+
+ 
+
+systemctl start mysqld
+
+ 
+y
+
+ 
+
+systemctl status mysqld
+
+ 
+
+mysql_secure_installation (Y,Low,Yes,then all NO,remove anonymous user Y,disallow remote login N,reload privilages tables Y)
+
+ 
+
+mysql -u root –p                          (press enter)
+
+pwd : H@ckatha0n
+
+ 
+
+mysql> create database ingdb;
+
+ 
+
+mysql> show databases;
+
+ 
+
+mysql> use ingdb;
+
+ 
+
+mysql> CREATE  USER 'inguser1'@'%' IDENTIFIED BY 'H@ckath0n';
+
+Query OK, 0 rows affected (0.01 sec)     
+
+ 
+
+mysql> GRANT ALL PRIVILEGES ON *.* to 'inguser1'@'%';
+
+Query OK, 0 rows affected (0.00 sec)
+
+
+mysql> flush privileges;
+
+Query OK, 0 rows affected (0.00 sec)
+
+
+mysql> exit
+
+Bye
+
+ 
+Create database as <usecases>db
+ 
+
+ 
+
+       Nexus installation (as root)
+
+       -------------------
+
+sudo su -
+
+ 
+
+cd /opt
+
+ 
+
+wget http://www.sonatype.org/downloads/nexus-latest-bundle.zip
+
+ 
+
+chmod 777 nexus-latest-bundle.zip
+
+ 
+
+unzip nexus-latest-bundle.zip
+
+ 
+
+cd nexus-2.14.14-01/bin
+
+ 
+
+RUN_AS_USER=root ./nexus start
+
+ 
+
+open nexus in the browser with publicip:8081/nexus
+
+ 
+
+Default credentials are:
+
+admin
+
+admin123
+
+ 
+
+To push artifacts to nexus we need to set server property in cd /opt/maven/conf/settings.xml
+
+ 
+
+vi /opt/maven/conf/settings.xml and add the properties under server tag.
+
+    <server>
+
+      <id>nexus</id>
+
+      <username>admin</username>
+
+      <password>admin123</password>
+
+    </server>
+
+               
+
+vi /opt/maven/conf/settings.xml
+
+   <pluginGroups>
+
+       <pluginGroup>org.sonarsource.scanner.maven</pluginGroup>
+
+   </pluginGroups>
+
+ 
+
+ 
+
+Nodejs and NPM Installation (To build UI Job)
+
+--------------------------------------------------
+
+ 
+
+NodeJs and NPM Installation
+
+NodeJs install:
+
+ 
+
+cd       
+
+[root@ip-172-31-43-239 opt]# yum install -y gcc-c++ make
+
+ 
+
+After complete, install npm:
+curl -sL https://rpm.nodesource.com/setup_13.x | sudo -E bash -
+yum install nodejs -y
+
+npm install yarn -g
+
+To Configure with Jenkins
+
+Download NodeJS plugin in Jenkins:
+
+ 
+
+JenkinsàManage JenkinsàManage Plugins
+
+ 
+
+ 
+
+Configure Node Js:
+
+JenkinsàManage JenkinsàGlobal Tools Configuration
+
+               NODEJS
+
+               /usr/bin/node
+
+ 
+
+vi /etc/environment
+
+export NODE_HOME=/usr/bin/node
+export PATH=${NODE_HOME}/bin:${PATH}
+
+ 
+
+node --version
+
+npm –version
+
+ 
+
+Sample repos to fork :
+
+1)
+
+https://github.com/jyotheesh/Inglibrary                     Backend Job - (check Jenkinsfile for deploying to nexus / run the application using application.properties file i.e dev, sit, uat)
+
+https://github.com/jyotheesh/Inglibrary/tree/master/src/main/resources          (Check application.properties for dev, sit , uat) – for port/context path/ database username/pwd/dbname
+
+ 
+
+2)
+
+https://github.com/kurukundaveera/INGFavBank.git                      (Backend Job1)
+
+https://github.com/kurukundaveera/INGFavAccount.git                ( Backend Job2)
+
+https://github.com/kurukundaveera/INGFAV_UI.git                        (UI Job to be deployed as build in Tomcat)
+
+ 
+
+check pom.xml for Backend Jobs for nexus configuration
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Troubleshooting:Follow tecmint.com
+
+
+lsof 
+ss(recent commnad to monitor port sever)
+
+error 1045 mysql
+cat /etc/my.cnf
+add bind-address=0.0.0.0 to [client-server]
+restart server
+
+
+GRANT ALL ON *.* TO 'root'@'localhost' WITH GRANT OPTION;ca
+SELECT User,Host,plugin FROM mysql.user
+SELECT USER(),CURRENT_USER();
+
+netstat -plant | grep ":3306" | grep "LISTEN"
+
+Command:
+select user();
+
+show grants for inguser1;
+
+select  user,host plugin from mysql.user;
+
+show variables;
+
+show variables like 'skip_networking'
+
+check jenkins port
+sudo lsof -i -P | grep -i jenkins
+
+sudo yum install lsof(list of open files)
+
+
+sudo yum install firewalld
+firewall-cmd --zone=public --add-port=8080/tcp --permanent
+
+env | grep JAVA_
+
+curl ipinfo.io
+curl ipconfig.in/ip
+
+LIST PORT:
+netstat -tulpn | grep LISTEN
+ss -tulwn 
+ss -tl (TCP port)
+sudo lsof -np -iTCP -sTCP:LISTEN
+ps -ef | grep java
+
+TO KILL PROCESS:
+kill -9 PID
+
+RUN FROM COMMANDLINE:
+java -jar <fl> --spring.config.location=file:/opt/application.properties
+
+
+When you get jenkins status as Active(exited):
+vi /etc/sysconfig/jenkins
+#make sure that $JENKINS_USER="jenkins"
+
+chown -R jenkins:jenkins /var/lib.cache.log/jenkins
+systemctl restart jenkins
+
+Unbale to open Swaager UI:
+9800 port number
+<publicIP>:9800/contextpath/swagger-ui.html
+Always use .html after swagger.ui otherwise you will get whitelabel field error
+
+If you got blank response but no error goto project location and open index.html and then append . before / in base href
+
+
+If you got Public key Retrieval is not allowed then
+
+goto application.properties and add database url
+
+spring.datasource.url=jdbc:mysql://localhost:3306/dbname?autoReconnect=true&useSSL=false&allowPublicKeyRetrival=true
+
+
+----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+UI can be either React JS / Angular Technologies
+
+React/Angular scripts build would be created in  /var/lib/jenkins/workspace/{Job_name}
+NodeJS / NPM - Installation for UI Job using React/Angular 
+---------------------------------------------------------
+cd /opt
+yum install -y gcc-c++ make
+yum install nodejs -y
+npm install yarn -g
+
+node --version
+npm --version
+
+npm install -g @angular/cli             ---- Enable Angular application
+npm install -g polymer-cli --unsafe-perm
+
+vi /etc/environment
+export NODE_HOME=/usr/bin/node
+export PATH=${NODE_HOME}/bin:${PATH}
+
+Jenkins Configuration
+---------------------------
+Download NodeJS plugin
+
+Configure Node Js (Global tool configuration)
+-------------------------------------------
+NODEJS
+/usr/bin/node
+
+
+Angular 5 or higher version (read the below)
+----------------------------                                                    ------------------------------
+http://www.thejavageek.com/2018/01/04/deploying-angular-app-tomcat/
+
+Sample UI
+-----------
+UI - Declarative Scripting (React Js)
+
+pipeline {
+   agent any
+	stages {
+      stage('SCM Checkout') {
+         steps {
+            git 'https://github.com/awsasif8/Trading-UI.git'
+		}
+	}
+	stage('Build') {
+		steps {
+			sh '''
+			npm install
+			npm run build
+			npm audit fix
+			'''
+		}
+	}
+	stage ('Deploy') {
+		steps {
+			sh '''
+             cp -r $WORKSPACE/build /opt/apache-tomcat-9.0.30/webapps
+             curl -u admin:admin http://172.31.43.239:8888/manager/reload?path=/build 
+             '''
+		}
+	}
+}
+}
+
+---
+Notes:
+--------------------
+Launch the tomcat server and click on build folder to see the build application after the UI Job Completion
+http://172.31.43.239:8888/manager/reload?path=/build - IP address denotes Private IP of EC2 - This command reloads/refreshes the build and deployes into
+                                                       into Tomcat Server - /build folder.
+
+
+-------------------------------------
+UI - Declarative Scripting (Angular)
+-------------------------------------
+
+pipeline {
+   agent any
+	stages {
+      stage('SCM Checkout') {
+         steps {
+            git 'https://github.com/kurukundaveera/Kalyanam-UI.git'
+		}
+	}
+	stage('Build') {
+		steps {
+			sh '''
+			npm install
+			ng build --base-href=/usecase1/                      
+			'''
+		}
+	}
+	stage ('Deploy') {
+		steps {
+			sh '''
+             cp -r $WORKSPACE/dist/usecase1 /opt/apache-tomcat-9.0.30/webapps
+             curl -u admin:admin http://172.31.43.239:8888/manager/reload?path=/usecase1
+             '''
+		}
+	}
+}
+}
+
+(Note: Here matrimony is the context path that we can find in application.properties)
+
+
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+pipeline {
+agent any
+
+stages {
+/**Insurance-Backend Pipeline Job Build and Test stages **/
+stage('SCM Checkout') {
+steps {
+git url:'https://github.com/Jayachandradevcloud/INGFavBank.git'
+}
+}
+stage('Build') {
+steps {
+         sh"/opt/apache-maven-3.6.3/bin/mvn clean package -Dmaven.test.skip=true "
+}
+}
+
+stage('Quality Check') {
+steps {
+                        sh" /opt/apache-maven-3.6.3/bin/mvn sonar:sonar"
+}
+} 
+
+stage("build & SonarQube analysis") {
+            
+            steps {
+              withSonarQubeEnv('Sonar_Server') {
+                sh '/opt/apache-maven-3.6.3/bin/mvn sonar:sonar'
+              }
+            }
+          }
+          stage("Quality Gate") {
+            steps {
+              timeout(time: 2, unit: 'MINUTES') {
+                waitForQualityGate abortPipeline: true
+              }
+            }
+         }
+
+          
+
+stage('Deploy') {
+steps {
+                     sh"/opt/apache-maven-3.6.3/bin/mvn clean deploy -Dmaven.test.skip=true"
+}
+}
+stage('Release') {
+steps {
+                    sh"export JENKINS_NODE_COOKIE=dontKillMe; nohup java -jar $WORKSPACE/target/*.jar &"
+}
+}
+}
+}
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+pipeline {
+    agent any
+        stages {
+            stage('Git Checkout') {
+                steps {
+                    git 'https://github.com/vipin1297/Inglibrary.git'
+                    }
+                }
+            stage('Build') {
+                steps {
+                    withSonarQubeEnv('sonar') {
+                        sh '/opt/maven/bin/mvn clean verify sonar:sonar -Dmaven.test.skip=true'
+                        }
+                    }
+                }
+            stage("Quality Gate") {
+                steps {
+                    timeout(time: 1, unit: 'MINUTES') {
+                        waitForQualityGate abortPipeline: true
+                    }
+                }
+            }
+            stage ('Deploy') {
+                steps {
+                    sh '/opt/maven/bin/mvn clean deploy -Dmaven.test.skip=true'
+                }
+            }
+            stage ('Release') {
+                steps {
+                    sh 'export JENKINS_NODE_COOKIE=dontkillme ;nohup java -jar $WORKSPACE/target/*.jar &'
+                }
+            }
+	    post {
+       
+		always {
+            
+			emailext body: "${currentBuild.currentResult}: Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\n More info at: ${env.BUILD_URL}", recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'RequesterRecipientProvider']], subject: 'Test'
+        
+			}
+
+   		 }
+        }
+}
+--------------------------------------------------------------------
+smtp.gmail.com
+check use Smtp auth
+-Dmaven.test.skip=true
+--------------------------------------------------------------------------------------------
+
+pipeline {
+    agent any
+        stages{
+            stage('Git Checkout for ui'){
+                steps{
+                    git 'https://github.com/vipin1297/parking_frontend'
+                }
+            }
+            stage('Build') {
+                steps{
+                    sh 'npm install'
+                    sh 'npm run build'
+                    
+                }
+            }
+           
+            stage('SCM Checkout GitHub for backend')
+      {
+        steps {
+              git 'https://github.com/vipin1297/INGFavBank.git'
+              }
+      }
+       
+          stage("QG Check-Backend") {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    sh '/opt/maven/bin/mvn clean verify sonar:sonar -Dmaven.test.skip=true'
+                }
+              timeout(time: 5, unit: 'MINUTES') {
+                waitForQualityGate abortPipeline: true
+              }
+            }
+          }
+         
+         
+         stage( 'email' ){
+            steps{
+                emailext (
+
+  subject: "Waiting for your Approval! Job: '${env.JOB_NAME} [${env.BUILD_NUMBER}]'",
+
+  body: """<p>STARTED: Job '${env.JOB_NAME} [${env.BUILD_NUMBER}]':</p>
+
+              <p>Check console output at &QUOT;<a href='${env.BUILD_URL}'>${env.JOB_NAME} [${env.BUILD_NUMBER}]</a>&QUOT;</p>""",to: 'viratmaurya109@gmail.com'
+
+ 
+
+)
+            }
+        }
+                stage("UAT Approval") {
+                  steps {
+     
+script {
+def userInput = input(id: 'Proceed1', message: 'Promote build?', parameters: [[$class: 'BooleanParameterDefinition', defaultValue: true, description: '', name: 'Please confirm you agree with this']])
+echo 'userInput: ' + userInput
+ 
+            if(userInput == true) {
+                // do action
+            } else {
+                // not do action
+                echo "Action was aborted."
+            }
+ 
+        }  
+      }
+ }
+            stage('Uploading artifact to nexus') {
+             steps {
+                     sh"/opt/maven/bin/mvn clean deploy -Dmaven.test.skip=true"
+                }
+            }
+
+       
+        stage('Copy jar and application.property file to Ansible Server'){
+            steps{
+            sshPublisher(publishers: [sshPublisherDesc(configName: 'Local', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: 'ansible-playbook back1.yml', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
+            }
+        }
+       
+       
+    }
+}
+-------------------------------------------------------------------------------------------------------------------------------------------
+
+
+curl -s "http://13.126.30.80:8081/nexus/service/local/repositories/releases/content/com/hcl/FavoriteBank/maven-metadata.xml" | grep "<version>.*</version>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<version>\)\(.*\)\(</version>\)\(.*\)#\3#g"
+
+--------------------------------------------------------------------------------------------------------------------------------
+#!/bin/bash
+VERSION=$(curl -s "http://13.126.30.80:8081/nexus/service/local/repositories/releases/content/com/hcl/FavoriteBank/maven-metadata.xml" | grep "<version>.*</version>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<version>\)\(.*\)\(</version>\)\(.*\)#\3#g")
+echo $VERSION
+GROUP_ID=$(curl -s "http://13.126.30.80:8081/nexus/service/local/repositories/releases/content/com/hcl/FavoriteBank/maven-metadata.xml" | grep "<groupId>.*</groupId>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<groupId>\)\(.*\)\(</groupId>\)\(.*\)#\3#g" | sed -e 's#\.#/#g')
+echo $GROUP_ID
+ARTIFACT_ID=$(curl -s "http://13.126.30.80:8081/nexus/service/local/repositories/releases/content/com/hcl/FavoriteBank/maven-metadata.xml" | grep "<artifactId>.*</artifactId>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<artifactId>\)\(.*\)\(</artifactId>\)\(.*\)#\3#g")
+echo $ARTIFACT_ID
+BASEURL=http://13.126.30.80:8081/nexus/service/local/repositories/releases/content/
+echo $BASEURL
+export BASEURL
+wget "${BASEURL}${GROUP_ID}/${ARTIFACT_ID}/${VERSION}/${ARTIFACT_ID}-${VERSION}.jar"
+
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Copying the UI Build To UAT
+      copy:
+        src: /var/lib/jenkins/workspace/favbank/build
+        dest: /opt/apache-tomcat-9.0.31/webapps
+
+    - name: Getting Script copy
+      copy:
+        src: /home/ansadm/getinfo.sh
+        dest: /home/ansadm
+        mode: 777
+
+    - name: RUN ARTIFACT
+      shell: sh /home/ansadm/getinfo.sh
+
+    - name: Copying Application-sit.Properties file
+      get_url:
+        url: https://raw.githubusercontent.com/vipin1297/INGFavBank/master/src/main/resources/application-uat.properties
+        dest: /home/ansadm
+    - name: Starting Swagger UI
+      shell: "nohup java -jar /home/ansadmin/${ARTIFACT_ID}-${VERSION}.jar --spring.config.location=file:/home/ansadmin/application-uat.properties &"
+
+

@@ -1,0 +1,44 @@
+---
+- hosts: all
+  tasks:
+     - name: Copying the UI Build To UAT
+       copy:
+        src: /var/lib/jenkins/workspace/favbank/build
+        dest: /opt/apache-tomcat-9.0.31/webapps
+
+
+
+     - name: Getting VERSION
+       shell: curl -s "http://13.232.164.213:8081/nexus/content/repositories/snapshots/com/hcl/FavoriteBank/maven-metadata.xml" | grep "<version>.*</version>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<version>\)\(.*\)\(</version>\)\(.*\)#\3#g"
+       register: VERSION
+
+     - name: Getting groupId
+       shell: curl -s "http://13.232.164.213:8081/nexus/content/repositories/snapshots/com/hcl/FavoriteBank/maven-metadata.xml" | grep "<groupId>.*</groupId>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<groupId>\)\(.*\)\(</groupId>\)\(.*\)#\3#g" | sed -e 's#\.#/#g'
+       register: GROUP_ID
+
+     - name: GETTING ARTIFACT_ID
+       shell: curl -s "http://13.232.164.213:8081/nexus/content/repositories/snapshots/com/hcl/FavoriteBank/maven-metadata.xml" | grep "<artifactId>.*</artifactId>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<artifactId>\)\(.*\)\(</artifactId>\)\(.*\)#\3#g"
+       register: ARTIFACT_ID
+
+     - name: Getting TimeStamp
+       shell: curl -s "http://13.232.164.213:8081/nexus/content/repositories/snapshots/com/hcl/FavoriteBank/0.0.1-SNAPSHOT/maven-metadata.xml" | grep "<value>.*</value>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<value>\)\(.*\)\(</value>\)\(.*\)#\3#g"
+       register: TIME_STAMP
+
+     - name: test2
+       add_host:
+            name: "HOLDER"
+            version: "{{VERSION.stdout}}"
+            artifactId: "{{ARTIFACT_ID.stdout}}"
+            groupId: "{{GROUP_ID.stdout}}"
+            timestamp: "{{TIME_STAMP.stdout}}"
+
+     - name: Download Artifact
+       get_url:
+          url: http://13.232.164.213:8081/nexus/content/repositories/snapshots/{{hostvars['HOLDER']['groupId']}}/{{hostvars['HOLDER']['artifactId']}}/{{hostvars['HOLDER']['version']}}/{{hostvars['HOLDER']['artifactId']}}-{{hostvars['HOLDER']['timestamp']}}.jar
+          dest: /home/ansadm
+
+     - name: Starting Swagger UI
+      shell: "nohup java -jar /home/ansadmin/{{hostvars['HOLDER']['artifactId']}}-{{hostvars['HOLDER']['timestamp']}}.jar --spring.config.location=file:/home/ansadmin/application-uat.properties &"
+
+
+          "http://3.133.151.154:8081/nexus/content/repositories/snapshots/${GROUP_ID}/${ARTIFACT_ID}/${VERSION}/${ARTIFACT_ID}-${TIMESTAMP}.jar"

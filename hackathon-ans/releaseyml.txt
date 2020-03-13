@@ -1,0 +1,35 @@
+---
+- name: demo
+  hosts: all
+  
+
+
+     -name: Getting VERSION
+       shell: VERSION=$(curl -s "http://13.232.164.213:8081/nexus/service/local/repositories/releases/content/com/hcl/FavoriteBank/maven-metadata.xml" | grep "<version>.*</version>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<version>\)\(.*\)\(</version>\)\(.*\)#\3#g")
+       register: VERSION
+
+     - name: Getting groupId
+       shell: GROUP_ID=$(curl -s "http://13.232.164.213:8081/nexus/service/local/repositories/releases/content/com/hcl/FavoriteBank/maven-metadata.xml" | grep "<groupId>.*</groupId>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<groupId>\)\(.*\)\(</groupId>\)\(.*\)#\3#g" | sed -e 's#\.#/#g')
+       register: GROUP_ID
+
+     - name: GETTING ARTIFACT_ID
+       shell: ARTIFACT_ID=$(curl -s "http://13.232.164.213:8081/nexus/service/local/repositories/releases/content/com/hcl/FavoriteBank/maven-metadata.xml" | grep "<artifactId>.*</artifactId>" | sort --version-sort | uniq | tail -n1 | sed -e "s#\(.*\)\(<artifactId>\)\(.*\)\(</artifactId>\)\(.*\)#\3#g")
+       register: ARTIFACT_ID
+
+
+
+     - name: test2
+       add_host:
+            name: "HOLDER"
+            version: "{{VERSION.stdout}}"
+            artifactId: "{{ARTIFACT_ID.stdout}}"
+            groupId: "{{GROUP_ID.stdout}}"
+
+     - name: Download Artifact
+       get_url:
+          url: http://13.232.164.213:8081/nexus/service/local/repositories/releases/content/{{hostvars['HOLDER']['groupId']}}/{{hostvars['HOLDER']['artifactId']}}/{{hostvars['HOLDER']['version']}}/FavoriteBank-{{hostvars['HOLDER']['version']}}.jar
+          dest: /home/ansadm
+
+
+
+     
